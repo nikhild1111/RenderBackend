@@ -25,12 +25,12 @@ router.post("/signup",Signup);
 
 // })
 // // if you want give the admin or user in the login form and then based on that check the admin or not by the checkboc in the form data or directly check that
-router.get("/admin",auth, isAdmin,(req,res)=>{
-    res.json({
-        success:true,
-        message:"Welcome to the Protect admin route ",
-    })
-})
+// router.get("/admin",auth, isAdmin,(req,res)=>{
+//     res.json({
+//         success:true,
+//         message:"Welcome to the Protect admin route ",
+//     })
+// })
 router.get("/admin",(req,res)=>{
     res.json({
         success:true,
