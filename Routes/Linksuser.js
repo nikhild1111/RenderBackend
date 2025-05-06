@@ -31,6 +31,12 @@ router.get("/admin",auth, isAdmin,(req,res)=>{
         message:"Welcome to the Protect admin route ",
     })
 })
+router.get("/admin",(req,res)=>{
+    res.json({
+        success:true,
+        message:"Welcome to the Protect admin route ",
+    })
+})
 
 // mapping need to cretet
 module.exports=router;
