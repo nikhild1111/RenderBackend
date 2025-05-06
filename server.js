@@ -8,12 +8,13 @@ const cookieParser=require("cookie-parser")
 const productRoutes = require('./Routes/ProductRoutes');
 const cors = require('cors'); //must add this request when send request from one port to other cors is important
 
-// ✅ Must be before routes
+
+
 app.use(cors({
-    origin: 'http://localhost:3000',
-    credentials: true
-  }));
-  
+  origin: "https://your-frontend.vercel.app", // replace with your actual Vercel domain
+  credentials: true
+}));
+
 
 
 // Add this line to parse JSON request bodies
