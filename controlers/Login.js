@@ -54,19 +54,17 @@ let token=jwt.sign(payload,"LASTCHANSE",{
 
 // this will set the expiry of cookes after that it will not work
 const options = {
-    expires: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3 days
-    httpOnly: true,       // ✔️ Prevents client-side JS from accessing the cookie
-    sameSite: 'Lax',      // 🟡 'Lax' allows cookies in top-level navigations
-    secure: false         // 🔴 Set to true **only in production with HTTPS**
+    expires: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+    httpOnly: true,
+    sameSite: 'None',  // ✅ Allow cross-origin (Vercel <-> Render)
+    secure: true       // ✅ Required in production with HTTPS
   };
   
-
-res.cookie("token",token,options).status(200).json({
-    success:true,
+  res.cookie("token", token, options).status(200).json({
+    success: true,
     token,
-    // use this token in the protected routes after the user get the primimum do some changes inside it
-    message:"User Login Done",
-})
+    message: "User Login Done",
+  });
     
 
 

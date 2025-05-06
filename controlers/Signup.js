@@ -65,29 +65,30 @@ let token=jwt.sign(payload,"LASTCHANSE",{
 // we are doing the cookis and the response
 
 // this will set the expiry of cookes after that it will not work
-const options = {
-    expires: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production', // Ensure cookies are sent only over HTTPS in production
-    sameSite: "Strict", // or "Lax"
-  };
+// const options = {
+//     expires: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+//     httpOnly: true,
+//     secure: process.env.NODE_ENV === 'production', // Ensure cookies are sent only over HTTPS in production
+//     sameSite: "Strict", // or "Lax"
+//   };
   
-    // this was the most imporant as the cookis conteain the data we dont want it will be accesible by the user using documnet.cookis so we make it http only so only broser can acess it 
-    // user can not access it like the other html elemnt useing the documnet model
+//     // this was the most imporant as the cookis conteain the data we dont want it will be accesible by the user using documnet.cookis so we make it http only so only broser can acess it 
+//     // user can not access it like the other html elemnt useing the documnet model
 
 
-
-
-
-
-
-res.cookie("token",token,options).status(200).json({
-    success:true,
-    token,
-    // use this token in the protected routes after the user get the primimum do some changes inside it
-    message:"User Signup Done",
-})
-  
+    const options = {
+        expires: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+        httpOnly: true,
+        sameSite: 'None',  // ✅ Allow cross-origin (Vercel <-> Render)
+        secure: true       // ✅ Required in production with HTTPS
+      };
+      
+      res.cookie("token", token, options).status(200).json({
+        success: true,
+        token,
+        message: "User Login Done",
+      });
+      
 
 }catch(err){
     console.error(err);
