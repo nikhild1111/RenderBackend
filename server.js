@@ -9,13 +9,18 @@ const productRoutes = require('./Routes/ProductRoutes');
 const cors = require('cors'); //must add this request when send request from one port to other cors is important
 
 
+// // Allow requests from your frontend
+// app.use(cors({
+//     origin: 'http://localhost:3001',
+//     credentials: true, // if you're sending cookies
+//   }));
+
 
 app.use(cors({
-  origin: "https://your-frontend.vercel.app", // replace with your actual Vercel domain
-  credentials: true
-}));
-
-
+    origin: 'https://vercel-frontend-nine-chi.vercel.app', // your actual frontend URL
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    credentials: true
+  }));
 
 // Add this line to parse JSON request bodies
 app.use(express.json());
