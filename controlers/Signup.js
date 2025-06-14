@@ -46,6 +46,7 @@ const user=await User.create({
 
 
 const payload={
+    name,
     email:user.email,
     id:user._id,
     role:user.role,
@@ -86,6 +87,7 @@ let token=jwt.sign(payload,"LASTCHANSE",{
       res.cookie("token", token, options).status(200).json({
         success: true,
         token,
+         payload,
         message: "User Login Done",
       });
       

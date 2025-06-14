@@ -19,7 +19,7 @@ try{
 
     const user=await User.findOne({email});
     if(!user){
-response.status(400).json({
+ return res.status(400).json({
     success:false,
     message:"Email is not exist plase signup first "
 })
@@ -37,6 +37,7 @@ response.status(400).json({
 // as we want to create the token first difnd the payload (data) whcih we want in that token
 
 const payload={
+  name:user.name,
     email:user.email,
     id:user._id,
     role:user.role,
@@ -63,6 +64,7 @@ const options = {
   res.cookie("token", token, options).status(200).json({
     success: true,
     token,
+    payload,
     message: "User Login Done",
   });
     

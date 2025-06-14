@@ -9,18 +9,31 @@ const productRoutes = require('./Routes/ProductRoutes');
 const cors = require('cors'); //must add this request when send request from one port to other cors is important
 
 
-// // Allow requests from your frontend
-// app.use(cors({
-//     origin: 'http://localhost:3001',
-//     credentials: true, // if you're sending cookies
-//   }));
+// Allow requests from your frontend
 
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://vercel-frontend-nine-chi.vercel.app'
+];
 
 app.use(cors({
-    origin: 'https://vercel-frontend-nine-chi.vercel.app', // your actual frontend URL
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    credentials: true
-  }));
+  origin: function (origin, callback) {
+    // allow requests with no origin (like mobile apps or curl)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+credentials: true, // ✅ allow cookies
+}));
+
+
+// app.use(cors({
+//     origin: 'https://vercel-frontend-nine-chi.vercel.app', // your actual frontend URL
+//     methods: ['GET', 'POST', 'PUT', 'DELETE'],
+//     credentials: true
+//   }));
 
 // Add this line to parse JSON request bodies
 app.use(express.json());
@@ -35,9 +48,13 @@ app.use('/uploads', express.static(path.join(__dirname, 'public/uploads'))); // 
 
 // import the Links route
 
-const Links=require("./Routes/Linksuser")
+const Links=require("./Routes/Linksuser");
+const searchRoutes = require('./Routes/product');
 
-app.use('/api/products', productRoutes);
+const addressRoutes = require('./Routes/addressRoutes');
+app.use('/api/addresses', addressRoutes);
+app.use("/api/products", searchRoutes);
+app.use('/api/productsadd', productRoutes);
 
 
 

@@ -18,14 +18,29 @@ exports.auth=async(req,res,next)=>{
         // first extract the jwt token
         // we can get token from heder,cokkis,body if we inserted between them
     // console.log(req.cookies.token);
-    const token = req.cookies.token;
-    console.log("Token from cookie:", token);  // Debug log
-if(!token ||token==undefined){
+
+
+    const token1 = req.cookies.token;
+    console.log("Token from cookie:", token1);  // Debug log
+// if(!token ||token==undefined){
+//     return res.status(401).json({
+//         success:false,
+//         message:"Token missing ",
+//     })
+// }
+
+// Try to get token from cookies or Authorization header
+const token = req.cookies.token || req.header("Authorization")?.replace("Bearer ", "");
+
+console.log("Token:", token); // Debug log
+
+if (!token) {
     return res.status(401).json({
-        success:false,
-        message:"Token missing ",
-    })
+        success: false,
+        message: "Token missing",
+    });
 }
+
 // verify the token
 
 try{
@@ -35,8 +50,6 @@ try{
 
     // we are addding the decoded data in the user so we can chake the role
 req.user=decode;
-
-console.log(decode);
 
 }
 catch(err){
