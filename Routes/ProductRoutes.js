@@ -92,16 +92,19 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+
 const {
   addProduct,
   getAllProducts,
   updateProduct,
   deleteProduct
-} = require('../controlers/productController');
+} = require('../controlers/productController1');
+
+
 
 const { auth, isAdmin } = require("../middlewares/auth");
 
-;
+
 
 // Multer Storage Config
 const uploadPath = path.join(__dirname, '..', 'public/uploads');
