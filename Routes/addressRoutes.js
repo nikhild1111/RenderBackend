@@ -9,6 +9,8 @@ const User=require("../models/UserData");// Your auth middleware
 // GET - Fetch all addresses for logged-in user
 router.get('/', auth, async (req, res) => {
   try {
+// console.log("The user address", req.user.id);
+
     const user = await User.findById(req.user.id).select('addresses');
     if (!user) {
       return res.status(404).json({ message: 'User not found' });

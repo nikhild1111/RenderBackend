@@ -5,7 +5,7 @@ const {dbConnect}=require("./Config/database")
 const PORT=process.env.PORT||4000;
 const path = require('path');
 const cookieParser=require("cookie-parser")
-const productRoutes = require('./Routes/ProductRoutes');
+
 const cors = require('cors'); //must add this request when send request from one port to other cors is important
 
 
@@ -47,14 +47,22 @@ app.use('/uploads', express.static(path.join(__dirname, 'public/uploads'))); // 
 
 
 // import the Links route
-
+const productRoutes = require('./Routes/ProductRoutes');
 const Links=require("./Routes/Linksuser");
-const searchRoutes = require('./Routes/product');
-
+const searchRoutes = require('./Routes/Filter');
+const orderRoutes = require("./Routes/orderRoutes");
 const addressRoutes = require('./Routes/addressRoutes');
+const cartRoutes = require('./Routes/cartRoutes');
+const mailRoutes = require('./Routes/mail');
+app.use('/api/cart', cartRoutes);
+// whenever the request is come to the /api/v1 we will go to the Links rout and we will excute requst in that 
+app.use("/api/v1",Links);
 app.use('/api/addresses', addressRoutes);
 app.use("/api/products", searchRoutes);
 app.use('/api/productsadd', productRoutes);
+app.use('/api/mail', mailRoutes);
+// Routes
+app.use("/api/orders", orderRoutes);
 
 
 
@@ -63,19 +71,10 @@ app.use('/api/productsadd', productRoutes);
 // this will do connection with database
 dbConnect();
 
-
-
-// whenever the request is come to the /api/v1 we will go to the Links rout and we will excute requst in that 
-app.use("/api/v1",Links);
-
-
-
 // default route
 app.get('/',(req,res)=>{
     res.send(`<h1>This was an default route 6<h1>`)
 })
-
-
 
 app.listen(PORT,()=>{
     console.log(`Server is running on the port ${PORT}`)

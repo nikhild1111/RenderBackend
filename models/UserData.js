@@ -77,8 +77,9 @@ const userSchema = new mongoose.Schema({
 addresses: {
   type: [addressSchema],
   default: [],
-}
+},
 
-});
+} ,
+{ timestamps: true });  // ✅ Properly placed schema options
 
 module.exports = mongoose.model("User", userSchema);
