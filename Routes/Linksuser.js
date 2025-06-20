@@ -10,8 +10,8 @@ const router=express.Router();
 
 // const User=require("../models/UserData");
 
-const {Signup}=require("../controlers/Signup");
-const {Login}=require("../controlers/Login");
+const {Signup}=require("../controllers/Signup");
+const {Login}=require("../controllers/Login");
 
 router.post("/login",Login);
 router.post("/signup",Signup);

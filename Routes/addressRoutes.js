@@ -15,6 +15,8 @@ router.get('/', auth, async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
+console.log(user.addresses);
+
     res.json({ addresses: user.addresses });
   } catch (error) {
     console.error('Error fetching addresses:', error);

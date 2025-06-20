@@ -22,7 +22,7 @@ router.post('/save', auth, async (req, res) => {
       price: item.price,
     }));
 
-console.log(cartItems);
+// console.log(cartItems);
 
   try {
     const existingCart = await Cart.findOne({ userId });
@@ -215,11 +215,13 @@ router.get('/', auth, async (req, res) => {
 
 // Clear cart
 router.delete('/clear', auth, async (req, res) => {
-  const userId = req.user._id;
+  const userId = req.user.id;
 
   try {
     await Cart.deleteOne({ userId });
-    res.json({ message: 'Cart cleared' });
+    res.status(200).json({ 
+        success: true,
+      message: 'Cart cleared' });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }

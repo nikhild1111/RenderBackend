@@ -41,7 +41,7 @@ const payload={
     email:user.email,
     id:user._id,
     role:user.role,
-
+    phone:user.phone,
 }
 
 // LASTCHANSE its a secret key as our process.env is not working
@@ -54,6 +54,8 @@ let token=jwt.sign(payload,"LASTCHANSE",{
 // we are doing the cookis and the response
 
 // this will set the expiry of cookes after that it will not work
+payload.token=token;
+
 const options = {
     expires: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
     httpOnly: true,

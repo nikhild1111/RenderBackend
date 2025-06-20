@@ -54,6 +54,7 @@ const orderRoutes = require("./Routes/orderRoutes");
 const addressRoutes = require('./Routes/addressRoutes');
 const cartRoutes = require('./Routes/cartRoutes');
 const mailRoutes = require('./Routes/mail');
+const dashboard= require("./Routes/dashboard");
 app.use('/api/cart', cartRoutes);
 // whenever the request is come to the /api/v1 we will go to the Links rout and we will excute requst in that 
 app.use("/api/v1",Links);
@@ -63,6 +64,10 @@ app.use('/api/productsadd', productRoutes);
 app.use('/api/mail', mailRoutes);
 // Routes
 app.use("/api/orders", orderRoutes);
+
+
+// Mount routes
+app.use("/api/dashboard", dashboard);
 
 
 

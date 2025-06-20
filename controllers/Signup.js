@@ -50,6 +50,8 @@ const payload={
     email:user.email,
     id:user._id,
     role:user.role,
+     phone:user.phone,
+     token,
 
 }
 
@@ -59,7 +61,7 @@ let token=jwt.sign(payload,"LASTCHANSE",{
     expiresIn:"2h",
 })
 
-
+payload.token=token;
 
 // imp you can send the toekn in the header or in the response body or in the cookis
 

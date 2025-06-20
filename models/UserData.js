@@ -78,6 +78,15 @@ addresses: {
   type: [addressSchema],
   default: [],
 },
+// ✅ New fields
+  totalSpends: {
+    type: Number,
+    default: 0,
+  },
+  totalOrders: {
+    type: Number,
+    default: 0,
+  },
 
 } ,
 { timestamps: true });  // ✅ Properly placed schema options

@@ -14,7 +14,11 @@ const productSchema = new mongoose.Schema({
   image: String, // Example: "/uploads/image.jpg"
   type: String,  // 👈 product type for filtering,
   brand:String,
-  count: { type: Number, default: 1 }, 
+  count: { type: Number, default: 0 }, 
+  discount: {
+    type: Number,
+    default: 0
+  }
 });
 
 module.exports = mongoose.model('Product', productSchema);

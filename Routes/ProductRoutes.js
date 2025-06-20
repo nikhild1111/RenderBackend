@@ -98,7 +98,7 @@ const {
   getAllProducts,
   updateProduct,
   deleteProduct
-} = require('../controlers/productController1');
+} = require('../controllers/productController1');
 
 
 

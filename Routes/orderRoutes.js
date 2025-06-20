@@ -1,22 +1,14 @@
 const express = require("express");
-const {
-  createOrder,
-  getUserOrders,
-  getAllOrders,
-  updateOrderStatus,
-} = require("../controlers/orderController"); // ✅ fix spelling
+const { createRazorpayOrder, verifyPayment, confirmOrder, paymentFailure } = require("../controllers/orderController"); // ✅ fix spelling
 
 const { auth, isAdmin } = require("../middlewares/auth");
 
 const router = express.Router();
 
-// User
-router.post("/", auth, createOrder);
-router.get("/my", auth, getUserOrders);
+router.post("/create-razorpay-order", auth, createRazorpayOrder);
+router.post("/verify-payment", auth, verifyPayment);
+router.post("/confirm-order", auth, confirmOrder);
+router.post("/payment-failure", auth, paymentFailure);
 
-// Admin
-router.get("/", auth, isAdmin, getAllOrders);
-console.log("PATCH route hit");
-router.patch("/:orderId/item/:itemId/status", auth, isAdmin, updateOrderStatus);
 
 module.exports = router;
