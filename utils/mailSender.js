@@ -39,7 +39,7 @@ const mailSender = async (to, subject, text, html = null) => {
 
     // Email options
     const mailOptions = {
-      from: `"YourApp" <${process.env.EMAIL_USER}>`,
+      from: `"Ecomzy" <${process.env.EMAIL_USER}>`,
       to,
       subject,
       text,

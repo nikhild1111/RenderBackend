@@ -91,11 +91,6 @@ const orderSchema = new mongoose.Schema({
   price: { type: Number, required: true },
   discount: { type: Number, default: 0 },
   shipping: { type: Number, default: 0 },
-  status: {
-    type: String,
-    enum: ["pending", "confirmed", "on-the-way", "cancelled"],
-    default: "pending",
-  },
   shippingAddress: {
     fullName: String,
     address: String,
@@ -129,13 +124,6 @@ const orderSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 module.exports = mongoose.model('Order', orderSchema);
-
-
-
-
-
-
-
 
 
 

@@ -46,13 +46,13 @@ const user=await User.create({
 
 
 const payload={
-    name,
+  name:user.name,
     email:user.email,
     id:user._id,
     role:user.role,
-     phone:user.phone,
-     token,
-
+    phone:user.phone,
+   totalSpends:user.totalSpends,
+   totalOrders :user.totalOrders,
 }
 
 

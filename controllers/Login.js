@@ -42,6 +42,8 @@ const payload={
     id:user._id,
     role:user.role,
     phone:user.phone,
+   totalSpends:user.totalSpends,
+   totalOrders :user.totalOrders,
 }
 
 // LASTCHANSE its a secret key as our process.env is not working

@@ -40,7 +40,7 @@ router.post('/', auth, async (req, res) => {
     }
 
     const newAddress = {
-      name,
+      fullName:name,
       phone,
       address,
       city,
@@ -81,7 +81,7 @@ router.put('/:addressId', auth, async (req, res) => {
     // Update address
     user.addresses[addressIndex] = {
       ...user.addresses[addressIndex]._doc,
-      name,
+      fullName:name,
       phone,
       address,
       city,

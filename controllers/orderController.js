@@ -9,9 +9,11 @@
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const Order = require('../models/Order');
+const User = require('../models/UserData');
+const orderFailedTemplate = require('../utils/emailTemplates/orderFailed');
 const Product = require('../models/Product');
 const mailSender = require("../utils/mailSender");
-const { orderConfirmationTemplate } = require("../utils/emailTemplates");
+const { orderConfirmationTemplate } = require("../utils/emailTemplates/OrderConfirmTemplates");
 const { v4: uuidv4 } = require('uuid');
 
 // Razorpay instance
@@ -97,19 +99,98 @@ exports.verifyPayment = async (req, res) => {
 // --------------------
 // Confirm Order
 // --------------------
+// exports.confirmOrder = async (req, res) => {
+//   try {
+//     const { cartItems, shippingAddress, totalAmount, shipping, paymentInfo } = req.body;
+//     const userId = req.user.id;
+//  if (!userId)  throw new Error(`User not found: ${userId}`);
+//     const orderPromises = cartItems.map(async item => {
+//       const productId = item.productId || item._id;
+//       const product = await Product.findById(productId);
+//       if (!product) throw new Error(`Product not found: ${productId}`);
+
+//       const order = new Order({
+//         userId,
+//         productId: product._id,
+//         title: product.title,
+//         count: item.count,
+//         price: item.price,
+//         discount: item.discount || 0,
+//         shipping: shipping || 0,
+//         shippingAddress,
+//         totalAmount: (item.price - (item.discount || 0)) * item.count + (shipping || 0),
+//         paymentInfo: {
+//           paymentGroupId: paymentInfo.paymentGroupId,
+//           method: paymentInfo.method,
+//           status: paymentInfo.status,
+//           transactionId: paymentInfo.paymentId,
+//           razorpayOrderId: paymentInfo.orderId,
+//           razorpayPaymentId: paymentInfo.paymentId,
+//           razorpaySignature: paymentInfo.signature,
+//           paymentDate: new Date(),
+//         },
+//         orderStatus: "pending"
+//       });
+
+//       return order.save();
+//     });
+
+//     const savedOrders = await Promise.all(orderPromises);
+
+
+
+//     // ✅ Update user's totalSpends and totalOrders here we consider only the product not its count ok 
+//     const orderCount = savedOrders.length;
+//     const spendAmount = savedOrders.reduce((sum, order) => sum + order.totalAmount, 0);
+
+//     await User.findByIdAndUpdate(
+//       userId,
+//       {
+//         $inc: {
+//           totalOrders: orderCount,
+//           totalSpends: spendAmount
+//         }
+//       }
+//     );
+
+//     // ✅ Send Email
+//     await mailSender(
+//       req.user.email,
+//       "🛒 Order Confirmation - ECOMZY",
+//       "Your order has been placed successfully.",
+//       orderConfirmationTemplate({
+//         userName: req.user.name || "Customer",
+//         orders: savedOrders,
+//         totalAmount,
+//       })
+//     );
+
+//     res.status(201).json({ success: true, message: "Order confirmed and saved." });
+
+//   } catch (error) {
+//     console.error("Confirm order error:", error);
+//     res.status(500).json({ success: false, error: error.message });
+//   }
+// };
+
+
+
 exports.confirmOrder = async (req, res) => {
   try {
     const { cartItems, shippingAddress, totalAmount, shipping, paymentInfo } = req.body;
     const userId = req.user.id;
-  
 
+    if (!userId) throw new Error("User not found.");
 
-    const orderPromises = cartItems.map(async item => {
- const productId = item.productId || item._id;
-const product = await Product.findById(productId);
-  if (!product) throw new Error(`Product not found: ${productId}`);
+    const orderDocs = [];
 
-      const order = new Order({
+    // Prepare orders in-memory first
+    for (let item of cartItems) {
+      const productId = item.productId || item._id;
+      const product = await Product.findById(productId);
+      if (!product) throw new Error(`Product not found: ${productId}`);
+
+      orderDocs.push({
         userId,
         productId: product._id,
         title: product.title,
@@ -129,20 +210,52 @@ const product = await Product.findById(productId);
           razorpaySignature: paymentInfo.signature,
           paymentDate: new Date(),
         },
-        status: "confirmed",
-        orderStatus: "confirmed"
+        orderStatus: "pending",
       });
+    }
 
-      return order.save();
+    let savedOrders;
+
+    try {
+      // Save all orders together - atomic
+      savedOrders = await Order.insertMany(orderDocs);
+    } catch (insertError) {
+      console.error("⚠️ Order insert failed:", insertError);
+
+      // Send fallback mail to user
+      await mailSender(
+        req.user.email,
+        "❌ Order Failed - ECOMZY",
+        "Your payment succeeded but the order couldn't be placed.",
+        orderFailedTemplate({
+          user: req.user,
+          cartItems,
+          paymentInfo
+        })
+      );
+
+      return res.status(500).json({
+        success: false,
+        message: "Order failed. Refund will be initiated shortly.",
+      });
+    }
+
+    // ✅ Update user info
+    const orderCount = savedOrders.length;
+    const spendAmount = savedOrders.reduce((sum, order) => sum + order.totalAmount, 0);
+
+    await User.findByIdAndUpdate(userId, {
+      $inc: {
+        totalOrders: orderCount,
+        totalSpends: spendAmount,
+      }
     });
 
-      const savedOrders = await Promise.all(orderPromises);
-
-  // ✅ Send Email
+    // ✅ Send order confirmation mail
     await mailSender(
       req.user.email,
-      "🛒 Order Confirmation - YourApp",
-      "Your order has been placed successfully.",
+      "🛒 Order Confirmed - ECOMZY",
+      "Your order is confirmed.",
       orderConfirmationTemplate({
         userName: req.user.name || "Customer",
         orders: savedOrders,
@@ -150,13 +263,18 @@ const product = await Product.findById(productId);
       })
     );
 
-    res.status(201).json({ success: true, message: "Order confirmed and saved." });
+    res.status(201).json({
+      success: true,
+      message: "Order confirmed successfully.",
+      orders: savedOrders,
+    });
 
   } catch (error) {
-    console.error("Confirm order error:", error);
+    console.error("❌ Confirm order error:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 };
+
 
 // --------------------
 // Payment Failure (Optional)

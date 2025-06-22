@@ -2,41 +2,144 @@
 
 const Order = require('../models/Order');
 const User=require("../models/UserData");
+const mongoose = require("mongoose");
 const Product = require('../models/Product');
+const mailSender = require("../utils/mailSender");
+const shippedTemplate = require('../utils/emailTemplates/Ordershipped');
+const cancelledTemplate = require('../utils/emailTemplates/Ordercancelled');
+const pendingTemplate = require('../utils/emailTemplates/Orderpending');
+const insufficientStockTemplate = require('../utils/emailTemplates/insufficientStock');
+const confirmedTemplate = require('../utils/emailTemplates/Adminconfirmed');
 
 // Get User Orders
+// const getUserOrders = async (req, res) => {
+//   try {
+//     const userId = req.user.id;
+//     const page = parseInt(req.query.page) || 1;
+//     const limit = parseInt(req.query.limit) || 10;
+//     const skip = (page - 1) * limit;
+
+//     const orders = await Order.find({ userId })
+//       .populate('productId', 'name images category')
+//       .sort({ createdAt: -1 })
+//       .skip(skip)
+//       .limit(limit);
+
+//     const totalOrders = await Order.countDocuments({ userId });
+
+//     res.status(200).json({
+//       success: true,
+//       orders,
+//       pagination: {
+//         currentPage: page,
+//         totalPages: Math.ceil(totalOrders / limit),
+//         totalOrders,
+//         hasNext: page < Math.ceil(totalOrders / limit),
+//         hasPrev: page > 1
+//       }
+//     });
+
+//   } catch (error) {
+//     console.error('Error fetching user orders:', error);
+//     res.status(500).json({ message: 'Error fetching orders', error: error.message });
+//   }
+// };
+
+// controllers/orderController.js
+
+
+
+//  do both work filter and normal
 const getUserOrders = async (req, res) => {
   try {
     const userId = req.user.id;
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+
+    const {
+      keyword = "",
+      status = "",
+      date = "",
+      sort = "recent",
+      page = 1,
+      limit = 10,
+    } = req.body;
+
+    const query = { userId };
+
+    // 🔍 Keyword search on title
+    if (keyword && keyword.trim()) {
+      const regEx = new RegExp(keyword.trim(), 'i');
+      query.title = regEx;
+    }
+
+    // 📅 Filter by exact date
+    if (date && date.trim()) {
+      const targetDate = new Date(date);
+      const nextDate = new Date(targetDate);
+      nextDate.setDate(nextDate.getDate() + 1);
+
+      query.createdAt = {
+        $gte: targetDate,
+        $lt: nextDate,
+      };
+    }
+
+    // 🛒 Order status filter
+    if (status && status.trim()) {
+      query.orderStatus = status.trim();
+    }
+
+    // ⏳ Sorting logic
+    const sortOption = sort === 'oldest' ? { createdAt: 1 } : { createdAt: -1 };
+
     const skip = (page - 1) * limit;
+    const parsedLimit = parseInt(limit);
 
-    const orders = await Order.find({ userId })
-      .populate('productId', 'name images category')
-      .sort({ createdAt: -1 })
+    // 📦 Fetch orders with population
+    const orders = await Order.find(query)
+      .populate({
+        path: 'productId',
+        select: 'title brand image price discount type'
+      })
+      .populate({
+        path: 'userId',
+        select: 'name email phone role totalSpends totalOrders' // optional: depends if you want to show user info
+      })
+      .sort(sortOption)
       .skip(skip)
-      .limit(limit);
+      .limit(parsedLimit);
 
-    const totalOrders = await Order.countDocuments({ userId });
+    const totalOrders = await Order.countDocuments(query);
+    const totalPages = Math.ceil(totalOrders / parsedLimit);
+
+  const pendingCount = await Order.countDocuments({
+      userId,
+      orderStatus: 'pending',
+    });
+
+    
 
     res.status(200).json({
       success: true,
       orders,
-      pagination: {
-        currentPage: page,
-        totalPages: Math.ceil(totalOrders / limit),
-        totalOrders,
-        hasNext: page < Math.ceil(totalOrders / limit),
-        hasPrev: page > 1
-      }
+      currentPage: parseInt(page),
+      totalPages,
+      totalOrders,
+      pendingCount,
+      appliedFilters: { keyword, status, date, sort }
     });
 
-  } catch (error) {
-    console.error('Error fetching user orders:', error);
-    res.status(500).json({ message: 'Error fetching orders', error: error.message });
+  } catch (err) {
+    console.error("Error fetching filtered orders:", err.message);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
+
+
+
+
+
+
 
 // Get Single Order
 const getOrderById = async (req, res) => {
@@ -99,84 +202,252 @@ const cancelOrder = async (req, res) => {
 // ADMIN FUNCTIONS
 // ===========================
 
-// Get All Orders (Admin)
+// Get All Orders (Admin) do both work filter and normal
 const getAllOrders = async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
-    const skip = (page - 1) * limit;
-    const status = req.query.status;
+    // Destructure from req.body with defaults
+    const {
+      keyword = "",
+      status = "",
+      date = "",
+      sort = "recent",
+      page = 1,
+      limit = 10,
+    } = req.body;
 
+    const skip = (parseInt(page) - 1) * parseInt(limit);
     let query = {};
-    if (status) {
-      query.status = status;
+
+    // Filter by order status
+    if (status.trim()) {
+      query.orderStatus = status.trim();
     }
 
-    const orders = await Order.find(query)
-      .populate('userId', 'name email phone')
-      .populate('productId', 'name images category')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
+    // Filter by keyword (in product title)
+    if (keyword.trim()) {
+      query.title = { $regex: keyword.trim(), $options: "i" };
+    }
 
+    // Filter by created date (exact date)
+    if (date.trim()) {
+      const start = new Date(date);
+      const end = new Date(date);
+      end.setHours(23, 59, 59, 999);
+      query.createdAt = { $gte: start, $lte: end };
+    }
+
+    // Sorting
+    const sortBy = sort === "oldest" ? { createdAt: 1 } : { createdAt: -1 };
+
+    // Fetch paginated orders
+    const orders = await Order.find(query)
+       .populate({
+        path: 'productId',
+        select: 'title brand image price discount type'
+      })
+      .populate({
+        path: 'userId',
+        select: 'name email phone role totalSpends totalOrders' // optional: depends if you want to show user info
+      })
+      .sort(sortBy)
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    // Total matching orders (for pagination)
     const totalOrders = await Order.countDocuments(query);
 
-    // Get order statistics
-    const stats = await Order.aggregate([
-      {
-        $group: {
-          _id: '$status',
-          count: { $sum: 1 },
-          totalAmount: { $sum: '$totalAmount' }
-        }
-      }
+    // Stats for dashboard
+    const userCount = await User.countDocuments();
+    const orderCount = await Order.countDocuments(); // total without filters
+
+    // Total revenue based on full matching set (not paginated)
+    const revenueAgg = await Order.aggregate([
+      { $group: { _id: null, total: { $sum: "$totalAmount" } } }
     ]);
+    const totalRevenue = revenueAgg[0]?.total || 0;
+
+    const pendingCount = await Order.countDocuments({ orderStatus: 'pending' });
 
     res.status(200).json({
       success: true,
       orders,
-      stats,
+      userCount,
+      orderCount,
+      totalRevenue,
+      pendingCount,
       pagination: {
-        currentPage: page,
-        totalPages: Math.ceil(totalOrders / limit),
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(totalOrders / parseInt(limit)),
         totalOrders,
-        hasNext: page < Math.ceil(totalOrders / limit),
-        hasPrev: page > 1
+        hasNext: parseInt(page) < Math.ceil(totalOrders / parseInt(limit)),
+        hasPrev: parseInt(page) > 1
       }
     });
 
   } catch (error) {
-    console.error('Error fetching all orders:', error);
-    res.status(500).json({ message: 'Error fetching orders', error: error.message });
+    console.error("Error in getAllOrders:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch orders",
+      error: error.message
+    });
   }
 };
+
 
 // Update Order Status (Admin)
 const updateOrderStatus = async (req, res) => {
   try {
     const { orderId } = req.params;
-    const { status, orderStatus } = req.body;
+    const { orderStatus } = req.body;
 
-    const order = await Order.findById(orderId);
+    const order = await Order.findById(orderId).populate("userId").populate("productId");
 
-    if (!order) {
-      return res.status(404).json({ message: 'Order not found' });
+    if (!order) return res.status(404).json({ message: "Order not found" });
+
+    if (order.orderStatus === orderStatus) {
+      return res.status(200).json({ message: "Status already updated" });
     }
 
-    if (status) order.status = status;
-    if (orderStatus) order.orderStatus = orderStatus;
+    const user = order.userId;
+    const product = order.productId;
 
-    await order.save();
+    // ✅ Handle Confirmed Orders - Check stock
+    if (orderStatus === "confirmed") {
+      if (product.quantity < order.count) {
+        // Send mail to admin
+        await mailSender(
+  req.user.email, // or admin email if you're targeting admin
+  "⚠️ Action Needed: Insufficient Stock for Order",
+  "Order cannot be confirmed due to low stock.",
+  insufficientStockTemplate({ user, product, order })
+);
+
+
+        return res.status(400).json({
+          message: "Insufficient product quantity. Admin has been notified."
+        });
+      }
+
+      // Reduce product quantity
+      product.quantity -= order.count;
+      await product.save();
+
+      order.orderStatus = "confirmed";
+      await order.save();
+
+      // Send confirmation mail to user
+     await mailSender(
+  user.email,
+  "✅ Order Confirmed - ECOMZY",
+  "Your order has been confirmed.",
+  confirmedTemplate({ user, product, order })
+);
+
+    }
+
+    // ✅ Handle Shipped Orders
+    else if (orderStatus === "shipped") {
+      order.orderStatus = "shipped";
+      await order.save();
+
+   await mailSender(
+  user.email,
+  "📦 Order Shipped - ECOMZY",
+  "Your order has been shipped.",
+  shippedTemplate({ user, product, order })
+);
+
+    }
+
+    // ✅ Handle Cancelled Orders
+    else if (orderStatus === "cancelled") {
+      order.orderStatus = "cancelled";
+      await order.save();
+
+      await mailSender(
+  user.email,
+  "❌ Order Cancelled - ECOMZY",
+  "Your order has been cancelled.",
+  cancelledTemplate({ user, product, order })
+);
+
+    }
+
+    // ✅ Handle Pending (resend mail)
+    else if (orderStatus === "pending") {
+      order.orderStatus = "pending";
+      await order.save();
+
+     await mailSender(
+  user.email,
+  "⏳ Order Pending - ECOMZY",
+  "Your order is pending.",
+  pendingTemplate({ user, product, order })
+);
+
+    }
 
     res.status(200).json({
       success: true,
-      message: 'Order status updated successfully',
-      order
+      message: `Order status updated to ${orderStatus}`,
+      order,
     });
-
   } catch (error) {
-    console.error('Error updating order status:', error);
-    res.status(500).json({ message: 'Error updating order status', error: error.message });
+    console.error("Error updating order status:", error);
+    res.status(500).json({ message: "Internal Server Error", error: error.message });
+  }
+};
+
+
+
+
+
+
+const searchUsers = async (req, res) => {
+  try {
+    const { search = '', page = 1 } = req.body;
+    const limit = 15;
+
+    const isObjectId = mongoose.Types.ObjectId.isValid(search);
+    const isNumeric = /^\d+$/.test(search.trim()); // Check if search is a number
+
+    // Dynamically build query
+    const orConditions = [];
+
+    if (isObjectId) {
+      orConditions.push({ _id: new mongoose.Types.ObjectId(search) });
+    }
+
+    if (search) {
+      orConditions.push(
+        { name: new RegExp(search, 'i') },
+        { email: new RegExp(search, 'i') }
+      );
+
+      if (isNumeric) {
+        orConditions.push({ phone: Number(search) });
+      }
+
+      // Optional: If address is part of the schema and is a string
+      orConditions.push({ address: new RegExp(search, 'i') });
+    }
+
+    const query = search ? { $or: orConditions } : {}; // If search is empty, fetch all
+
+    const totalUsers = await User.countDocuments(query);
+    const users = await User.find(query)
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit);
+
+    res.status(200).json({
+      users,
+      totalPages: Math.ceil(totalUsers / limit),
+    });
+  } catch (err) {
+    console.error("User search failed:", err);
+    res.status(500).json({ error: "Internal server error" });
   }
 };
 
@@ -185,5 +456,6 @@ module.exports = {
   getOrderById,
   cancelOrder,
   getAllOrders,
-  updateOrderStatus
+  updateOrderStatus,
+  searchUsers
 };

@@ -21,6 +21,8 @@ exports.auth=async(req,res,next)=>{
 
 
     const token1 = req.cookies.token;
+
+
     console.log("Token from cookie:", token1);  // Debug log
 // if(!token ||token==undefined){
 //     return res.status(401).json({

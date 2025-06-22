@@ -34,7 +34,7 @@
 const mongoose = require("mongoose");
 
 const addressSchema = new mongoose.Schema({
-  name: { type: String, required: true },
+  fullName: { type: String, required: true },
   phone: { type: Number, required: true },
   address: { type: String, required: true },
   city: { type: String, required: true },

@@ -8,18 +8,19 @@ const {
   getOrderById,
   cancelOrder,
   getAllOrders,
-  updateOrderStatus
+  updateOrderStatus,
+  searchUsers
 } = require('../controllers/dashboardcontollers');
 
 
-router.get('/my-orders', auth, getUserOrders);
+router.post('/my-orders', auth, getUserOrders);
 router.get('/order/:orderId', auth, getOrderById);
 router.put('/cancel/:orderId', auth, cancelOrder);
 
 // Admin Routes
-router.get('/admin/all-orders', auth, isAdmin, getAllOrders);
+router.post('/admin/all-orders', auth, isAdmin, getAllOrders);
 router.put('/admin/update-status/:orderId', auth, isAdmin, updateOrderStatus);
-
+router.post("/users", auth, isAdmin, searchUsers);
 module.exports = router;
 
 

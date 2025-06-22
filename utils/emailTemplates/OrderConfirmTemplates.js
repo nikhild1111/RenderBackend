@@ -16,7 +16,7 @@ exports.orderConfirmationTemplate = ({ userName, orders, totalAmount }) => {
       <p><strong>Total Paid:</strong> ₹${totalAmount}</p>
 
       <p>📍 Shipping To:<br/>
-        ${orders[0].shippingAddress.fullName},<br/>
+        ${userName},<br/>
         ${orders[0].shippingAddress.address},<br/>
         ${orders[0].shippingAddress.city} - ${orders[0].shippingAddress.pincode}<br/>
         Phone: ${orders[0].shippingAddress.phone}
@@ -24,7 +24,7 @@ exports.orderConfirmationTemplate = ({ userName, orders, totalAmount }) => {
 
       <p style="margin-top: 20px;">We will notify you when your order is shipped. Track your order anytime in your account dashboard.</p>
 
-      <p>Thanks,<br/>Team YourApp</p>
+       <p>Thanks,<br/>Team Ecomzy</p>
     </div>
   `;
 };
