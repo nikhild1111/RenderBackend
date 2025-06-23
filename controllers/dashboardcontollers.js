@@ -203,9 +203,102 @@ const cancelOrder = async (req, res) => {
 // ===========================
 
 // Get All Orders (Admin) do both work filter and normal
+// const getAllOrders = async (req, res) => {
+//   try {
+//     // Destructure from req.body with defaults
+//     const {
+//       keyword = "",
+//       status = "",
+//       date = "",
+//       sort = "recent",
+//       page = 1,
+//       limit = 10,
+//     } = req.body;
+
+//     const skip = (parseInt(page) - 1) * parseInt(limit);
+//     let query = {};
+
+//     // Filter by order status
+//     if (status.trim()) {
+//       query.orderStatus = status.trim();
+//     }
+
+//     // Filter by keyword (in product title)
+//     if (keyword.trim()) {
+//       query.title = { $regex: keyword.trim(), $options: "i" };
+//     }
+
+//     // Filter by created date (exact date)
+//     if (date.trim()) {
+//       const start = new Date(date);
+//       const end = new Date(date);
+//       end.setHours(23, 59, 59, 999);
+//       query.createdAt = { $gte: start, $lte: end };
+//     }
+
+//     // Sorting
+//     const sortBy = sort === "oldest" ? { createdAt: 1 } : { createdAt: -1 };
+
+//     // Fetch paginated orders
+//     const orders = await Order.find(query)
+//        .populate({
+//         path: 'productId',
+//         select: 'title brand image price discount type'
+//       })
+//       .populate({
+//         path: 'userId',
+//         select: 'name email phone role totalSpends totalOrders' // optional: depends if you want to show user info
+//       })
+//       .sort(sortBy)
+//       .skip(skip)
+//       .limit(parseInt(limit));
+
+//     // Total matching orders (for pagination)
+//     const totalOrders = await Order.countDocuments(query);
+
+//     // Stats for dashboard
+//     const userCount = await User.countDocuments();
+//     const orderCount = await Order.countDocuments(); // total without filters
+
+//     // Total revenue based on full matching set (not paginated)
+//     const revenueAgg = await Order.aggregate([
+//       { $group: { _id: null, total: { $sum: "$totalAmount" } } }
+//     ]);
+//     const totalRevenue = revenueAgg[0]?.total || 0;
+
+//     const pendingCount = await Order.countDocuments({ orderStatus: 'pending' });
+
+//     res.status(200).json({
+//       success: true,
+//       orders,
+//       userCount,
+//       orderCount,
+//       totalRevenue,
+//       pendingCount,
+//       pagination: {
+//         currentPage: parseInt(page),
+//         totalPages: Math.ceil(totalOrders / parseInt(limit)),
+//         totalOrders,
+//         hasNext: parseInt(page) < Math.ceil(totalOrders / parseInt(limit)),
+//         hasPrev: parseInt(page) > 1
+//       }
+//     });
+
+//   } catch (error) {
+//     console.error("Error in getAllOrders:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Failed to fetch orders",
+//       error: error.message
+//     });
+//   }
+// };
+
+
+
+// here we not take the order for whcoh the user id and the product id is not eexist as the error will come 
 const getAllOrders = async (req, res) => {
   try {
-    // Destructure from req.body with defaults
     const {
       keyword = "",
       status = "",
@@ -218,17 +311,15 @@ const getAllOrders = async (req, res) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
     let query = {};
 
-    // Filter by order status
+    // Filters
     if (status.trim()) {
       query.orderStatus = status.trim();
     }
 
-    // Filter by keyword (in product title)
     if (keyword.trim()) {
       query.title = { $regex: keyword.trim(), $options: "i" };
     }
 
-    // Filter by created date (exact date)
     if (date.trim()) {
       const start = new Date(date);
       const end = new Date(date);
@@ -236,41 +327,36 @@ const getAllOrders = async (req, res) => {
       query.createdAt = { $gte: start, $lte: end };
     }
 
-    // Sorting
     const sortBy = sort === "oldest" ? { createdAt: 1 } : { createdAt: -1 };
 
-    // Fetch paginated orders
-    const orders = await Order.find(query)
-       .populate({
-        path: 'productId',
-        select: 'title brand image price discount type'
-      })
-      .populate({
-        path: 'userId',
-        select: 'name email phone role totalSpends totalOrders' // optional: depends if you want to show user info
-      })
-      .sort(sortBy)
-      .skip(skip)
-      .limit(parseInt(limit));
+    // Fetch all matching orders first
+    const allOrders = await Order.find(query)
+      .populate("productId")
+      .populate("userId")
+      .sort(sortBy);
 
-    // Total matching orders (for pagination)
-    const totalOrders = await Order.countDocuments(query);
+// 2. ✅ Filter only valid orders where both product and user exist
+const validOrders = allOrders.filter(
+  (order) => order.productId !== null && order.userId !== null
+);
 
-    // Stats for dashboard
+
+    // Pagination on filtered orders
+    const paginatedOrders = validOrders.slice(skip, skip + parseInt(limit));
+
+    // Stats
+    const totalOrders = validOrders.length;
     const userCount = await User.countDocuments();
-    const orderCount = await Order.countDocuments(); // total without filters
-
-    // Total revenue based on full matching set (not paginated)
+    const orderCount = await Order.countDocuments();
     const revenueAgg = await Order.aggregate([
       { $group: { _id: null, total: { $sum: "$totalAmount" } } }
     ]);
     const totalRevenue = revenueAgg[0]?.total || 0;
-
-    const pendingCount = await Order.countDocuments({ orderStatus: 'pending' });
+    const pendingCount = await Order.countDocuments({ orderStatus: "pending" });
 
     res.status(200).json({
       success: true,
-      orders,
+      orders: paginatedOrders,
       userCount,
       orderCount,
       totalRevenue,
@@ -280,8 +366,8 @@ const getAllOrders = async (req, res) => {
         totalPages: Math.ceil(totalOrders / parseInt(limit)),
         totalOrders,
         hasNext: parseInt(page) < Math.ceil(totalOrders / parseInt(limit)),
-        hasPrev: parseInt(page) > 1
-      }
+        hasPrev: parseInt(page) > 1,
+      },
     });
 
   } catch (error) {
@@ -289,10 +375,11 @@ const getAllOrders = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch orders",
-      error: error.message
+      error: error.message,
     });
   }
 };
+
 
 
 // Update Order Status (Admin)
@@ -302,99 +389,104 @@ const updateOrderStatus = async (req, res) => {
     const { orderStatus } = req.body;
 
     const order = await Order.findById(orderId).populate("userId").populate("productId");
-
-    if (!order) return res.status(404).json({ message: "Order not found" });
-
-    if (order.orderStatus === orderStatus) {
-      return res.status(200).json({ message: "Status already updated" });
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
     }
 
     const user = order.userId;
     const product = order.productId;
 
-    // ✅ Handle Confirmed Orders - Check stock
+    if (!user) {
+      return res.status(404).json({ message: `User not found for ID: ${order.userId}` });
+    }
+
+    if (!product) {
+      return res.status(404).json({ message: `Product not found for ID: ${order.productId}` });
+    }
+
+    if (order.orderStatus === orderStatus) {
+      return res.status(200).json({ message: "Order status is already up to date" });
+    }
+
+    // ✅ Handle "confirmed" status
     if (orderStatus === "confirmed") {
       if (product.quantity < order.count) {
-        // Send mail to admin
+        // Notify admin about insufficient stock
         await mailSender(
-  req.user.email, // or admin email if you're targeting admin
-  "⚠️ Action Needed: Insufficient Stock for Order",
-  "Order cannot be confirmed due to low stock.",
-  insufficientStockTemplate({ user, product, order })
-);
-
+          req.user.email || process.env.ADMIN_EMAIL,
+          "⚠️ Action Needed: Insufficient Stock for Order",
+          "Order cannot be confirmed due to low stock.",
+          insufficientStockTemplate({ user, product, order })
+        );
 
         return res.status(400).json({
-          message: "Insufficient product quantity. Admin has been notified."
+          message: "Insufficient stock to confirm this order. Admin notified.",
         });
       }
 
-      // Reduce product quantity
+      // Reduce stock
       product.quantity -= order.count;
       await product.save();
 
+      // Update order status
       order.orderStatus = "confirmed";
       await order.save();
 
       // Send confirmation mail to user
-     await mailSender(
-  user.email,
-  "✅ Order Confirmed - ECOMZY",
-  "Your order has been confirmed.",
-  confirmedTemplate({ user, product, order })
-);
-
+      await mailSender(
+        user.email,
+        "✅ Order Confirmed - ECOMZY",
+        "Your order has been confirmed.",
+        confirmedTemplate({ user, product, order })
+      );
     }
 
-    // ✅ Handle Shipped Orders
+    // ✅ Handle "shipped"
     else if (orderStatus === "shipped") {
       order.orderStatus = "shipped";
       await order.save();
 
-   await mailSender(
-  user.email,
-  "📦 Order Shipped - ECOMZY",
-  "Your order has been shipped.",
-  shippedTemplate({ user, product, order })
-);
-
+      await mailSender(
+        user.email,
+        "📦 Order Shipped - ECOMZY",
+        "Your order has been shipped.",
+        shippedTemplate({ user, product, order })
+      );
     }
 
-    // ✅ Handle Cancelled Orders
+    // ✅ Handle "cancelled"
     else if (orderStatus === "cancelled") {
       order.orderStatus = "cancelled";
       await order.save();
 
       await mailSender(
-  user.email,
-  "❌ Order Cancelled - ECOMZY",
-  "Your order has been cancelled.",
-  cancelledTemplate({ user, product, order })
-);
-
+        user.email,
+        "❌ Order Cancelled - ECOMZY",
+        "Your order has been cancelled.",
+        cancelledTemplate({ user, product, order })
+      );
     }
 
-    // ✅ Handle Pending (resend mail)
+    // ✅ Handle "pending"
     else if (orderStatus === "pending") {
       order.orderStatus = "pending";
       await order.save();
 
-     await mailSender(
-  user.email,
-  "⏳ Order Pending - ECOMZY",
-  "Your order is pending.",
-  pendingTemplate({ user, product, order })
-);
-
+      await mailSender(
+        user.email,
+        "⏳ Order Pending - ECOMZY",
+        "Your order is pending.",
+        pendingTemplate({ user, product, order })
+      );
     }
 
     res.status(200).json({
       success: true,
-      message: `Order status updated to ${orderStatus}`,
+      message: `Order status updated to '${orderStatus}'`,
       order,
     });
   } catch (error) {
-    console.error("Error updating order status:", error);
+    console.error("❌ Error updating order status:", error);
     res.status(500).json({ message: "Internal Server Error", error: error.message });
   }
 };

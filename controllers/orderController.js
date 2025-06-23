@@ -244,12 +244,26 @@ exports.confirmOrder = async (req, res) => {
     const orderCount = savedOrders.length;
     const spendAmount = savedOrders.reduce((sum, order) => sum + order.totalAmount, 0);
 
-    await User.findByIdAndUpdate(userId, {
+console.log(spendAmount);
+console.log(orderCount);
+
+
+ const updatedUser= await User.findByIdAndUpdate(userId, {
       $inc: {
         totalOrders: orderCount,
         totalSpends: spendAmount,
-      }
-    });
+      },
+    },
+        { new: true } // This option returns the updated document
+        // new: true makes sure that the returned updatedUser is the one after the update.
+    );
+
+
+    if (!updatedUser) {
+  return res.status(404).json({ success: false, message: "User not found." });
+}
+
+ 
 
     // ✅ Send order confirmation mail
     await mailSender(
@@ -263,10 +277,13 @@ exports.confirmOrder = async (req, res) => {
       })
     );
 
-    res.status(201).json({
+    res.status(200).json({
       success: true,
       message: "Order confirmed successfully.",
       orders: savedOrders,
+      totalOrders:updatedUser.totalOrders,
+      totalSpends:updatedUser.totalSpends
+      
     });
 
   } catch (error) {

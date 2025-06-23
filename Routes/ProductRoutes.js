@@ -118,8 +118,10 @@ const upload = multer({ storage });
 
 // Routes
 router.post('/add',auth, isAdmin, upload.single('image'), addProduct);
-router.get('/', getAllProducts);
+router.post('/search', getAllProducts);
 router.put('/update/:id', auth, isAdmin, upload.single('image'), updateProduct);
 router.delete('/delete/:id', auth, isAdmin, deleteProduct);
 
 module.exports = router;
+
+

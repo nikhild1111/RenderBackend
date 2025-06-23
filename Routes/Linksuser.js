@@ -2,6 +2,8 @@
 // this routes will be called for /api/v1
 const express=require("express");
 const { auth,isAdmin } =require("../middlewares/auth");
+
+const {sendResetOtp ,verifyOtpAndReset} =require("../controllers/forgetpasswordController")
 // take the instance of router
 const router=express.Router();
 
@@ -39,6 +41,10 @@ router.get("/admin",auth, isAdmin,(req,res)=>{
         message:"Welcome to the Protect admin route ",
     })
 })
+
+router.post('/forgot-password', sendResetOtp);
+router.post('/verify-otp', verifyOtpAndReset);
+
 
 
 
