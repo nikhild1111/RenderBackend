@@ -22,10 +22,15 @@ const getProducts = async (req, res) => {
       brands = [],
       priceRange = "",
       page = 1,
-      limit = 12
+      limit = 12,
+      sortBy = "createdAt",       // default: newest first
+      sortOrder = "desc",
+      minDiscount = null,
+      minRating = null,
+      inStock = null
     } = req.body;
 
-    // 🔄 Handle brands: convert string or array into clean array
+    // 🔄 Handle brands: parse clean array
     let parsedBrands = [];
     if (brands) {
       if (typeof brands === 'string') {
@@ -41,50 +46,71 @@ const getProducts = async (req, res) => {
       }
     }
 
-    // 📦 Build MongoDB query
+    // 📦 Build query
     const query = {};
 
-    // 🔍 Smart keyword search across multiple fields
-    if (keyword && keyword.trim()) {
-      const trimmedKeyword = keyword.trim();
-      const regEx = new RegExp(trimmedKeyword, 'i');
-      const keywordNumber = Number(trimmedKeyword);
+    // 🔍 Keyword filter (across fields)
+    if (keyword.trim()) {
+      const regEx = new RegExp(keyword.trim(), 'i');
+      const keywordNumber = Number(keyword.trim());
       const isNumeric = !isNaN(keywordNumber);
 
       query.$or = [
         { title: regEx },
         { description: regEx },
         { brand: regEx },
-        { type: regEx },                      // ✅ Partial type match via regex
+        { type: regEx },
         ...(isNumeric ? [{ price: keywordNumber }] : [])
       ];
     }
 
-    // ✅ Apply 'type' filter only if provided explicitly (from dropdown etc.)
-    if (type && type.trim()) {
-      query.type = type.trim();
-    }
+    // 🎯 Category filter
+    if (type && type.trim()) query.type = type.trim();
 
-    // ✅ Apply brand filter
-    if (parsedBrands.length > 0) {
-      query.brand = { $in: parsedBrands };
-    }
+    // 🏷️ Brands filter
+    if (parsedBrands.length > 0) query.brand = { $in: parsedBrands };
 
-    // ✅ Apply price range
+    // 💰 Price filter
     if (priceRange && !isNaN(priceRange)) {
       query.price = { $lte: parseInt(priceRange) };
     }
 
-    // 🧮 Pagination
+    // 📉 Discount filter
+    if (minDiscount && !isNaN(minDiscount)) {
+      query.discount = { $gte: parseInt(minDiscount) };
+    }
+
+    // 🌟 Rating filter
+    if (minRating && !isNaN(minRating)) {
+      query.rating = { $gte: parseFloat(minRating) };
+    }
+
+    // 📦 In-stock filter
+    if (inStock === true || inStock === false) {
+      query.inStock = inStock;
+    }
+
+    // 🔃 Sorting
+    const sort = {};
+    if (sortBy) {
+      sort[sortBy] = sortOrder === "asc" ? 1 : -1;
+    }
+
+    // 📄 Pagination
     const skip = (page - 1) * limit;
     const parsedLimit = parseInt(limit);
 
-    const products = await Product.find(query).skip(skip).limit(parsedLimit);
+    // 🔍 DB queries
+    const products = await Product.find(query)
+      .sort(sort)
+      .skip(skip)
+      .limit(parsedLimit);
+
     const totalProducts = await Product.countDocuments(query);
     const totalPages = Math.ceil(totalProducts / parsedLimit);
 
-    console.log("Final MongoDB query:", JSON.stringify(query, null, 2));
-    console.log(`Found ${totalProducts} products`);
+    console.log("Final MongoDB Query:", JSON.stringify(query, null, 2));
+    console.log("Sort:", sort);
 
     res.status(200).json({
       success: true,
@@ -97,6 +123,11 @@ const getProducts = async (req, res) => {
         type,
         brands: parsedBrands,
         priceRange,
+        sortBy,
+        sortOrder,
+        minDiscount,
+        minRating,
+        inStock,
         page,
         limit
       }
