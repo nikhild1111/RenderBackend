@@ -8,77 +8,139 @@ const Product = require('../models/Product');
 const router = express.Router();
 
 // // Save or update cart this will be to override the cart ok 
-router.post('/save', auth, async (req, res) => {
-  const { items, totalItems, totalPrice } = req.body;
-  const userId = req.user.id;
-  // id is coem fromthe mongoose so schema so dont use the _ as its a strign form
+// router.post('/save', auth, async (req, res) => {
+//   const { items, totalItems, totalPrice } = req.body;
+//   const userId = req.user.id;
+//   // id is coem fromthe mongoose so schema so dont use the _ as its a strign form
 
 
 
-   // Map items to match schema
-    const cartItems = items.map(item => ({
-      productId: item._id, // from frontend
-      count: item.count,
-      price: item.price,
-    }));
+//    // Map items to match schema
+//     const cartItems = items.map(item => ({
+//       productId: item._id, // from frontend
+//       count: item.count,
+//       price: item.price,
+//     }));
 
-// console.log(cartItems);
+// // console.log(cartItems);
 
-  try {
-    const existingCart = await Cart.findOne({ userId });
+//   try {
+//     const existingCart = await Cart.findOne({ userId });
 
-    if (existingCart) {
-      existingCart.items = cartItems;
-      existingCart.totalItems = totalItems;
-      existingCart.totalPrice = totalPrice;
-      await existingCart.save();
-    } else {
-      await Cart.create({userId,
-        items: cartItems,
-        totalItems,
-        totalPrice, });
-    }
+//     if (existingCart) {
+//       existingCart.items = cartItems;
+//       existingCart.totalItems = totalItems;
+//       existingCart.totalPrice = totalPrice;
+//       await existingCart.save();
+//     } else {
+//       await Cart.create({userId,
+//         items: cartItems,
+//         totalItems,
+//         totalPrice, });
+//     }
 
   
+//     const detailedItems = await Promise.all(
+//   savedCart.items.map(async item => {
+//     const product = await Product.findById(item.productId);
+
+//     const availableQuantity = product.quantity - item.count; // ✅ remaining stock
+
+
+// // ✅ 1. ...product.toObject()
+// // This spreads all fields of the product (like _id, title, brand, image, description, etc.) into a new plain JavaScript object.
+// // ✅ 2. quantity, price are overwritten
+// // The original quantity from DB (like 10) is replaced by:
+// // quantity = product.quantity - item.count  // remaining
+// // price = item.price  // price stored in cart
+// // 
+// // ✅ 3. map(...) returns an array of these modified product objects
+// // So detailedItems becomes something like:
+
+
+
+//     return {
+//       ...product.toObject(),
+//       count: item.count,              // how many user added
+//       quantity: availableQuantity,    // how much is left in stock
+//       price: item.price               // price when user added it to cart
+//     };
+//   })
+// );
+
+// res.status(200).json({
+//   success: true,
+//   message: 'Cart saved successfully',
+//   items: detailedItems,
+//   totalItems: savedCart.totalItems,
+//   totalPrice: savedCart.totalPrice
+// });
+//   } catch (err) {
+//     res.status(500).json({ message: 'Server error', error: err.message });
+//   }
+// });
+
+// ******************************************************///// keep this  if error come use it 
+router.post('/save', auth, async (req, res) => {
+  const { items } = req.body;
+  const userId = req.user.id;
+
+  const cartItems = items.map(item => ({
+    productId: item._id,
+    count: item.count,
+    price: item.price,
+  }));
+
+  // Calculate totals server-side
+  const totalItems = cartItems.reduce((sum, item) => sum + item.count, 0);
+  const totalPrice = cartItems.reduce((sum, item) => sum + item.count * item.price, 0);
+
+  try {
+    let savedCart = await Cart.findOne({ userId });
+
+    if (savedCart) {
+      savedCart.items = cartItems;
+      savedCart.totalItems = totalItems;
+      savedCart.totalPrice = totalPrice;
+      savedCart = await savedCart.save();
+    } else {
+      savedCart = await Cart.create({ userId, items: cartItems, totalItems, totalPrice });
+    }
+
     const detailedItems = await Promise.all(
-  savedCart.items.map(async item => {
-    const product = await Product.findById(item.productId);
+      savedCart.items.map(async item => {
+        const product = await Product.findById(item.productId);
+        const availableQuantity = product.quantity - item.count;
 
-    const availableQuantity = product.quantity - item.count; // ✅ remaining stock
+        return {
+          ...product.toObject(),
+          count: item.count,
+          quantity: availableQuantity,
+          price: item.price
+        };
+      })
+    );
 
-
-// ✅ 1. ...product.toObject()
-// This spreads all fields of the product (like _id, title, brand, image, description, etc.) into a new plain JavaScript object.
-// ✅ 2. quantity, price are overwritten
-// The original quantity from DB (like 10) is replaced by:
-// quantity = product.quantity - item.count  // remaining
-// price = item.price  // price stored in cart
-// 
-// ✅ 3. map(...) returns an array of these modified product objects
-// So detailedItems becomes something like:
-
-
-
-    return {
-      ...product.toObject(),
-      count: item.count,              // how many user added
-      quantity: availableQuantity,    // how much is left in stock
-      price: item.price               // price when user added it to cart
-    };
-  })
-);
-
-res.status(200).json({
-  success: true,
-  message: 'Cart saved successfully',
-  items: detailedItems,
-  totalItems: savedCart.totalItems,
-  totalPrice: savedCart.totalPrice
-});
+    res.status(200).json({
+      success: true,
+      message: 'Cart saved successfully',
+      items: detailedItems,
+      totalItems: savedCart.totalItems,
+      totalPrice: savedCart.totalPrice
+    });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
+
+
+
+
+
+
+
+
+
 
 
 
